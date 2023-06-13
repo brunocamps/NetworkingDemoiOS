@@ -7,6 +7,8 @@
 
 import Foundation
 
+// The Product model complies with the API response we'll be expecting
+
 struct Product: Identifiable, Hashable, Codable {
     var id: Int // Change the id type to Int
     let title: String // Change the name property to title
