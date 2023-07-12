@@ -11,7 +11,7 @@ class ProductViewModel: ObservableObject {
     @Published var products: [Product] = []
     @Published var isLoading = false
     private let networkManager = NetworkManager()
-
+    
     func loadProducts() {
         isLoading = true
         networkManager.makeRequest { result in
@@ -27,18 +27,19 @@ class ProductViewModel: ObservableObject {
             }
         }
     }
-
+    
+    
     func saveProductsToJSON() {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-
+        
         do {
             let jsonData = try encoder.encode(products)
             let documentsURL = FileManager.documentsDirectoryURL
             let fileURL = documentsURL.appendingPathComponent("products.json")
-
+            
             try jsonData.write(to: fileURL)
-
+            
             print("Products saved to: \(fileURL.absoluteString)")
         } catch {
             print("Failed to save products: \(error)")

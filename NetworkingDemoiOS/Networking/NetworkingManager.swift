@@ -8,7 +8,6 @@
 import Foundation
 // Get from fakestoreapi.com/products
 
-
 protocol NetworkSession {
     func getData(from url: URL) async throws -> (Data, URLResponse)
 }
@@ -20,6 +19,7 @@ enum MockSessionError: Error {
 }
 
 extension URLSession: NetworkSession {
+
     func getData(from url: URL) async throws -> (Data, URLResponse) {
         let (data, response) = try await self.data(from: url)
         return (data, response)
@@ -28,63 +28,59 @@ extension URLSession: NetworkSession {
 
 // Add NetworkManager class
 class NetworkManager {
-    let session: NetworkSession
-    
+    // changed to var
+    var session: NetworkSession
+
     init(session: NetworkSession = URLSession.shared) {
         self.session = session
     }
-    
-    func makeRequest(completion: @escaping (Result<[Product], Error>) -> Void) {
-        // Change JSON to the API link
-        guard let url = URL(string: "https://fakestoreapi.com/products") else {
-            completion(.failure(NetworkError.invalidURL))
-            return
+
+    func setSession(_ session: NetworkSession) {
+            self.session = session
         }
-        
-        Task {
+
+    func makeRequest() async throws -> [Product] {
+
+        guard let url = URL(string: "https://fakestoreapi.com/products") else {
+            throw NetworkError.invalidURL
+        }
+
             do {
                 let (data, response) = try await session.getData(from: url)
-                
+
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    completion(.failure(NetworkError.invalidResponse))
-                    return
+
+                    throw NetworkError.invalidResponse
                 }
-                
+
                 switch httpResponse.statusCode {
                 case 200...299:
                     // Successful response, proceed with decoding
                     let decodedProducts = try JSONDecoder().decode([Product].self, from: data)
-                    let products = decodedProducts.map { product in
-                        Product(id: product.id, title: product.title, price: product.price, image: product.image)
-                    }
-                    completion(.success(products))
-                    
+                    return decodedProducts
+
                 case 400...499:
                     // Client error response
                     let errorMessage = try JSONDecoder().decode(ErrorMessage.self, from: data)
-                    completion(.failure(NetworkError.clientError(errorMessage)))
-                    print("Error 400...499: Client Error response")
+                    throw NetworkError.clientError(errorMessage)
                 case 500...599:
                     // Server error response
                     let errorMessage = try JSONDecoder().decode(ErrorMessage.self, from: data)
-                    completion(.failure(NetworkError.serverError(errorMessage)))
-                    // print(completion)
-                    print("Error 500...599: Server Error response")
-                    
+                    throw NetworkError.serverError(errorMessage)
+
                 default:
-                    completion(.failure(NetworkError.invalidResponse))
-                    // print(completion)
-                    print("Network/Default Error response")
+                    throw NetworkError.invalidResponse
                 }
             } catch let decodingError as DecodingError {
-                completion(.failure(NetworkError.jsonDecodingError(decodingError)))
+                throw NetworkError.jsonDecodingError(decodingError)
             } catch {
-                completion(.failure(error))
+                print("The request failed.")
+                throw error
+
             }
-        }
+
     }
 }
-
 
 enum NetworkError: Error {
     case invalidURL
